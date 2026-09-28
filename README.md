@@ -32,3 +32,13 @@ The API is under `/api`: authentication at `/auth`, listings at `/paintings`, Mo
 Run `npm test` for the isolated MongoDB integration tests and `npm run build` for the frontend build. The test suite uses mongodb-memory-server and may download its MongoDB binary on the first run.
 
 The bundled art images in `client/public/artworks` are decorative imagery for the landing page. They are not sale listings. Actual listings come only from MongoDB.
+
+PORT=5000
+MONGO_URI=mongodb+srv://salehh1234:LlZNplcCpidxRQwR@cluster0.ubvnciq.mongodb.net/?appName=lumiere
+JWT_SECRET=99fK2mQ9xL7vN3pR6sT4wY1zA5cD8eF0g
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+PORT=3001
+HOST=127.0.0.1
+
