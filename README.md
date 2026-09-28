@@ -21,6 +21,16 @@ For a production build, run `npm run build` followed by `npm start`. The applica
 
 ## Marketplace
 
+### Password recovery and profiles
+
+The account icon opens a profile with artworks, favorites, contact requests, editable name/bio/location/phone, and password settings. A listing's optional phone number is public on its card; a profile's phone remains private until explicitly added to a listing.
+
+Password recovery requires `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` in `.env`. Use the public frontend URL for `APP_URL` (locally `http://127.0.0.1:5174`; HTTPS in production). SMTP port 465 uses TLS; port 587 requires STARTTLS. Restart after changing `.env`. Without email configuration, recovery clearly reports that delivery is unavailable. No reset links are exposed in API responses or server logs.
+
+Reset links expire after 30 minutes and work once; only their SHA-256 hashes are stored. Changing or resetting a password invalidates other sessions. The new account integration test uses isolated MongoDB and a fake mailer and never sends real email.
+
+The generated `client/public/artworks/gallery-interior.png` is decorative, not a sale listing. Generated using the built-in ImageGen tool with this prompt: “Wide photorealistic sunlit Mediterranean art gallery, ivory walls, beige limestone floor, arched right window, olive tree, wooden bench, gold framed coastal painting at center-right; empty pale left wall for copy; warm afternoon light; no text, logos or people.”
+
 Guests can browse available paintings, search by title, filter by category, location, and price, and sort by price. One account can both sell and buy. Registered members can publish paintings, edit or remove their own listings, mark them sold, save favorites, and request seller contact details. Sellers can see contact requests in My listings. There is no checkout or payment processing; transactions are arranged directly.
 
 Accounts use bcrypt password hashes and seven-day JWTs in HttpOnly, SameSite cookies. Mutating requests are origin checked; account and listing writes are rate limited. Form validation and ownership checks run on the server. Uploaded images are checked for type and size before being saved to MongoDB GridFS.

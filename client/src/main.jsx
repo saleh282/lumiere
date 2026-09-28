@@ -7,3 +7,4 @@ createRoot(document.getElementById('root')).render(<React.StrictMode><App /></Re
 
 import './expanded.css';
 import './market.css';
+import './redesign.css';

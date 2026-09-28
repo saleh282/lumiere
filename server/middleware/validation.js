@@ -21,6 +21,11 @@ export function validatePainting(req, res, next) {
   const input = req.body || {};
   const update = req.method === 'PUT';
   const fields = {}, values = {};
+  if (Object.hasOwn(input, 'phone')) {
+    const phone = string(input.phone);
+    if (typeof input.phone !== 'string' || (phone && (!/^\+?[\d\s().-]{7,30}$/.test(phone) || phone.replace(/\D/g, '').length < 7 || phone.replace(/\D/g, '').length > 15))) fields.phone = 'Enter a valid phone number including country code.';
+    else values.phone = phone;
+  }
   for (const [name, min, max] of [['title', 2, 120], ['description', 10, 5000], ['medium', 2, 100], ['dimensions', 2, 100], ['location', 2, 100]]) {
     if (update && !Object.hasOwn(input, name)) continue;
     const value = string(input[name]);

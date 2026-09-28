@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from './Modal.jsx';
 import { apiRequest } from '../api.js';
 
-export default function AuthDialog({ mode, setMode, user, savedCount, onClose, onAuthenticated, onLogout, onViewSaved, onViewListings }) {
+export default function AuthDialog({ mode, setMode, user, savedCount, onClose, onAuthenticated, onLogout, onViewSaved, onViewListings, onForgot }) {
   const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '' });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -53,6 +53,7 @@ export default function AuthDialog({ mode, setMode, user, savedCount, onClose, o
           {field('email', 'Email address', 'email', 'email')}
           {field('password', 'Password', showPassword ? 'text' : 'password', registering ? 'new-password' : 'current-password')}
           <div className="password-help"><span>{registering ? 'At least 10 characters' : 'Your password is case-sensitive'}</span><button type="button" disabled={busy} onClick={() => setShowPassword(value => !value)} aria-pressed={showPassword}>{showPassword ? 'Hide password' : 'Show password'}</button></div>
+          {!registering && <button type="button" className="text-link forgot-link" onClick={onForgot}>Forgot password?</button>}
           {registering && field('confirm', 'Confirm password', showPassword ? 'text' : 'password', 'new-password')}
           {errors.form && <p className="form-error" role="alert">{errors.form}</p>}
           <button className="primary-button auth-submit" disabled={busy} type="submit">{busy ? (registering ? 'Creating your account…' : 'Signing in…') : (registering ? 'Create my account' : 'Sign in')}<span aria-hidden="true">→</span></button>

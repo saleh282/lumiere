@@ -16,6 +16,7 @@ export function authMiddleware(secret) {
     if (!mongoose.isObjectIdOrHexString(decoded.sub)) throw new HttpError(401, 'Please sign in again.', undefined, 'TOKEN_INVALID');
     req.user = await User.findById(decoded.sub);
     if (!req.user) throw new HttpError(401, 'Please sign in again.', undefined, 'TOKEN_INVALID');
+    if ((decoded.version || 0) !== (req.user.sessionVersion || 0)) throw new HttpError(401, 'Your password changed. Please sign in again.', undefined, 'TOKEN_INVALID');
     next();
   });
 }

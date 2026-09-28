@@ -12,7 +12,7 @@ import { inquiryRoutes } from './routes/inquiryRoutes.js';
 import { imageRoutes } from './routes/imageRoutes.js';
 import { errorHandler } from './utils/errors.js';
 
-export function createApp({ jwtSecret = config.jwtSecret, images = createMongoImageService() } = {}) {
+export function createApp({ jwtSecret = config.jwtSecret, images = createMongoImageService(), mailer } = {}) {
   const app = express();
   app.disable('x-powered-by');
   if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
@@ -34,7 +34,7 @@ export function createApp({ jwtSecret = config.jwtSecret, images = createMongoIm
   app.get('/api/health', (req, res) => res.status(mongoose.connection.readyState === 1 ? 200 : 503).json({ databaseReady: mongoose.connection.readyState === 1, databaseName: mongoose.connection.readyState === 1 ? mongoose.connection.name : null, uploadsReady: images.ready, imageStorage: images.storage, authReady: jwtSecret.length >= 32 }));
   const authenticate = authMiddleware(jwtSecret);
   app.use('/api/images', requireDatabase, imageRoutes());
-  app.use('/api/auth', requireDatabase, authRoutes(jwtSecret, authenticate));
+  app.use('/api/auth', requireDatabase, authRoutes(jwtSecret, authenticate, mailer));
   app.use('/api/paintings', requireDatabase, paintingRoutes(authenticate, images));
   app.use('/api/favorites', requireDatabase, favoriteRoutes(authenticate));
   app.use('/api/inquiries', requireDatabase, inquiryRoutes(authenticate));

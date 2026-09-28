@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 export const CATEGORIES = ['Abstract', 'Landscapes', 'Seascapes', 'Portraits', 'Still life', 'Other'];
 const paintingSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 120 },
+  phone: { type: String, default: '', maxlength: 30 },
   description: { type: String, required: true, trim: true, maxlength: 5000 },
   price: { type: Number, required: true, min: 0.01, max: 1000000000 },
   category: { type: String, required: true, enum: CATEGORIES },

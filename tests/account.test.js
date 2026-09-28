@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import request from 'supertest';
+import { createApp } from '../server/app.js';
+import User from '../server/models/User.js';
+
+test('profile, listing phones and secure password recovery', async () => {
+  const mongo = await MongoMemoryServer.create();
+  const deliveries = [];
+  const app = createApp({ jwtSecret: 'isolated-account-tests-secret-at-least-32', mailer: { ready: true, sendReset: async (email, token) => deliveries.push({ email, token }) }, images: { ready: true, upload: async () => ({ imageUrl: '/artworks/great-wave.jpg', imagePublicId: 'fixture' }), remove: async () => {} } });
+  try {
+    await mongoose.connect(mongo.getUri(), { dbName: 'account_tests' });
+    const input = { name: 'Test Artist', email: 'artist@example.com', password: 'original-password-123', confirmPassword: 'original-password-123' };
+    const registered = await request(app).post('/api/auth/register').send(input).expect(201);
+    const cookie = registered.headers['set-cookie'][0].split(';')[0];
+    await request(app).put('/api/auth/profile').send({ name: 'Intruder' }).expect(401);
+    const profile = await request(app).put('/api/auth/profile').set('Cookie', cookie).send({ name: 'Updated Artist', bio: 'I paint the sea.', location: 'Cairo', phone: '+20 100 123 4567', email: 'hacked@example.com', sessionVersion: 99 }).expect(200);
+    assert.equal(profile.body.user.name, 'Updated Artist');
+    assert.equal(profile.body.user.email, input.email);
+    assert.equal(profile.body.user.passwordHash, undefined);
+    await request(app).put('/api/auth/profile').set('Cookie', cookie).send({ phone: 'javascript:bad' }).expect(422);
+    const listing = await request(app).post('/api/paintings').set('Cookie', cookie).field({ title: 'Sea Light', description: 'An original seascape in oil on canvas.', price: '2500', category: 'Seascapes', medium: 'Oil', dimensions: '50 x 70 cm', location: 'Cairo', phone: '+20 100 123 4567' }).attach('image', await readFile('client/public/artworks/great-wave.jpg'), 'art.jpg').expect(201);
+    const id = listing.body.painting.id;
+    assert.equal(listing.body.painting.phone, '+20 100 123 4567');
+    assert.equal((await request(app).get('/api/paintings/' + id + '/contact').set('Cookie', cookie).expect(200)).body.phone, '+20 100 123 4567');
+    await request(app).put('/api/paintings/' + id).set('Cookie', cookie).send({ phone: 'abc' }).expect(422);
+    assert.equal((await request(app).put('/api/paintings/' + id).set('Cookie', cookie).send({ phone: '' }).expect(200)).body.painting.phone, '');
+    const known = await request(app).post('/api/auth/forgot-password').send({ email: input.email }).expect(200);
+    const unknown = await request(app).post('/api/auth/forgot-password').send({ email: 'unknown@example.com' }).expect(200);
+    assert.deepEqual(known.body, unknown.body);
+    assert.equal(deliveries.length, 1);
+    const token = deliveries[0].token;
+    const stored = await User.findById(registered.body.user.id).select('+resetTokenHash');
+    assert.equal(stored.resetTokenHash, createHash('sha256').update(token).digest('hex'));
+    assert.notEqual(stored.resetTokenHash, token);
+    const reset = { token, password: 'new-password-12345', confirmPassword: 'new-password-12345' };
+    await request(app).post('/api/auth/reset-password').send({ ...reset, confirmPassword: 'wrong' }).expect(422);
+    const concurrent = await Promise.all([request(app).post('/api/auth/reset-password').send(reset), request(app).post('/api/auth/reset-password').send(reset)]);
+    assert.deepEqual(concurrent.map(r => r.status).sort(), [200, 400]);
+    await request(app).get('/api/auth/me').set('Cookie', cookie).expect(401);
+    await request(app).post('/api/auth/login').send(input).expect(401);
+    const logged = await request(app).post('/api/auth/login').send({ email: input.email, password: reset.password }).expect(200);
+    const newCookie = logged.headers['set-cookie'][0].split(';')[0];
+    await request(app).post('/api/auth/forgot-password').send({ email: input.email }).expect(200);
+    await User.updateOne({ _id: stored._id }, { $set: { resetTokenExpires: new Date(0) } });
+    await request(app).post('/api/auth/reset-password').send({ ...reset, token: deliveries.at(-1).token }).expect(400);
+    await request(app).post('/api/auth/change-password').set('Cookie', newCookie).send({ currentPassword: 'wrong', password: 'last-password-123', confirmPassword: 'last-password-123' }).expect(401);
+    const changed = await request(app).post('/api/auth/change-password').set('Cookie', newCookie).send({ currentPassword: reset.password, password: 'last-password-123', confirmPassword: 'last-password-123' }).expect(200);
+    await request(app).get('/api/auth/me').set('Cookie', newCookie).expect(401);
+    await request(app).get('/api/auth/me').set('Cookie', changed.headers['set-cookie'][0].split(';')[0]).expect(200);
+    const unconfigured = createApp({ mailer: { ready: false } });
+    await request(unconfigured).post('/api/auth/forgot-password').send({ email: input.email }).expect(503);
+  } finally { await mongoose.disconnect(); await mongo.stop(); }
+});

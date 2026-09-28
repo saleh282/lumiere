@@ -57,7 +57,7 @@ export function createPaintingController(images) {
       if (!painting || !painting.sellerId) throw new HttpError(404, 'This seller could not be found.');
       if (painting.status === 'sold') throw new HttpError(409, 'This painting has already been sold.');
       if (String(painting.sellerId._id) !== String(req.user._id)) await Inquiry.updateOne({ paintingId: painting._id, buyerId: req.user._id }, { $setOnInsert: { paintingId: painting._id, sellerId: painting.sellerId._id, buyerId: req.user._id } }, { upsert: true });
-      res.json({ name: painting.sellerId.name, email: painting.sellerId.email, title: painting.title });
+      res.json({ name: painting.sellerId.name, email: painting.sellerId.email, phone: painting.phone || '', title: painting.title });
     },
     async create(req, res) {
       const uploaded = await images.upload(req.file.buffer, req.file.mimetype);
